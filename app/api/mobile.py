@@ -19,7 +19,7 @@ from app.schemas.response import (
     DocumentUploadResponse,
     SyncStatus
 )
-from app.schemas.user import Token
+from app.schemas.user import LoginResponse
 from app.api.dependencies import BrigadistaUser, get_current_user
 from app.services.auth_service import AuthService
 from app.core.config import settings
@@ -27,13 +27,13 @@ from app.core.config import settings
 router = APIRouter(prefix="/mobile", tags=["Mobile App - Offline First"])
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=LoginResponse)
 def mobile_login(
     email: str,
     password: str,
+    db: Annotated[Session, Depends(get_db)],
     device_id: str = Query(..., description="Unique device identifier"),
-    app_version: str = Query(..., description="Mobile app version"),
-    db: Annotated[Session, Depends(get_db)]
+    app_version: str = Query(..., description="Mobile app version")
 ):
     """
     Mobile-specific login endpoint.

@@ -19,6 +19,26 @@ class Token(BaseModel):
     token_type: str = "bearer"
 
 
+class UserLoginResponse(BaseModel):
+    """User data in login response."""
+    id: int
+    email: str
+    nombre: str
+    apellido: str
+    rol: str
+    telefono: Optional[str] = None
+    created_at: datetime
+    activo: bool
+
+
+class LoginResponse(BaseModel):
+    """Complete login response with token and user data."""
+    access_token: str
+    refresh_token: Optional[str] = None
+    token_type: str = "bearer"
+    user: UserLoginResponse
+
+
 class TokenData(BaseModel):
     """Decoded token data."""
     user_id: int

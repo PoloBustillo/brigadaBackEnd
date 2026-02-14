@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # CORS
-    ALLOWED_ORIGINS: str = "http://localhost:19006"
+    ALLOWED_ORIGINS: str = "http://localhost:19006,http://localhost:3000"
     
     # Cloudinary (optional)
     CLOUDINARY_CLOUD_NAME: str = ""

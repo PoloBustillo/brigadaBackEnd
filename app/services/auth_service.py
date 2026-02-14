@@ -8,7 +8,7 @@ from app.core.security import verify_password, create_access_token
 from app.core.config import settings
 from app.repositories.user_repository import UserRepository
 from app.models.user import User
-from app.schemas.user import Token
+from app.schemas.user import Token, LoginResponse, UserLoginResponse
 
 
 class AuthService:
@@ -38,9 +38,9 @@ class AuthService:
         
         return user
     
-    def login(self, email: str, password: str) -> Token:
+    def login(self, email: str, password: str) -> LoginResponse:
         """
-        Login user and return JWT token.
+        Login user and return JWT token with user data.
         
         Raises:
             HTTPException: If authentication fails
@@ -60,4 +60,22 @@ class AuthService:
             expires_delta=access_token_expires
         )
         
-        return Token(access_token=access_token)
+        # Split full_name into nombre and apellido
+        name_parts = user.full_name.split(" ", 1)
+        nombre = name_parts[0]
+        apellido = name_parts[1] if len(name_parts) > 1 else ""
+        
+        return LoginResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=UserLoginResponse(
+                id=user.id,
+                email=user.email,
+                nombre=nombre,
+                apellido=apellido,
+                rol=user.role.value,
+                telefono=user.phone,
+                created_at=user.created_at,
+                activo=user.is_active
+            )
+        )
