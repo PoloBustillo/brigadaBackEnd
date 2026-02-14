@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../brigadaFrontEnd"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "../brigadaWebCMS"
+		}
+	],
+	"settings": {}
+}
