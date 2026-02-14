@@ -1,0 +1,48 @@
+"""Main FastAPI application."""
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import settings
+from app.api import auth, users, admin_surveys, assignments, mobile, admin_responses
+
+# Create FastAPI app
+app = FastAPI(
+    title="Brigada Survey System API",
+    description="Backend API for mobile survey collection system",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(admin_surveys.router)
+app.include_router(assignments.router)
+app.include_router(mobile.router)
+app.include_router(admin_responses.router)
+
+
+@app.get("/")
+def root():
+    """Health check endpoint."""
+    return {
+        "message": "Brigada Survey System API",
+        "status": "running",
+        "environment": settings.ENVIRONMENT
+    }
+
+
+@app.get("/health")
+def health():
+    """Health check endpoint."""
+    return {"status": "healthy"}
