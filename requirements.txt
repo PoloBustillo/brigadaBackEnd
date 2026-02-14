@@ -21,5 +21,8 @@ email-validator==2.1.0
 # Utilities
 python-dotenv==1.0.0
 
+# Email
+resend==0.8.0
+
 # Optional integrations
 cloudinary==1.38.0

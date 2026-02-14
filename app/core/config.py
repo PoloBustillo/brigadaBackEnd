@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
     
+    # Email (Resend)
+    RESEND_API_KEY: str = ""
+    FROM_EMAIL: str = "noreply@psicologopuebla.com"
+    FROM_NAME: str = "Brigada"
+    
     # Environment
     ENVIRONMENT: str = "development"
     

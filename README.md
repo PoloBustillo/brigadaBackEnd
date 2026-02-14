@@ -28,6 +28,7 @@ Clean architecture with clear domain separation:
 - **Alembic** - Database migrations
 - **Pydantic v2** - Data validation
 - **JWT** - Authentication
+- **Resend** - Email service (activation codes)
 
 ## Getting Started
 
