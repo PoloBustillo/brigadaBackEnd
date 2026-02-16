@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.api import auth, users, admin_surveys, assignments, mobile, admin_responses
+from app.api import auth, users, admin_surveys, assignments, mobile, admin_responses, admin_activation, public_activation
 
 # Create FastAPI app
 app = FastAPI(
@@ -30,6 +30,8 @@ app.include_router(admin_surveys.router)
 app.include_router(assignments.router)
 app.include_router(mobile.router)
 app.include_router(admin_responses.router)
+app.include_router(admin_activation.router)  # Admin whitelist & activation codes
+app.include_router(public_activation.router)  # Public activation endpoints
 
 
 @app.get("/")

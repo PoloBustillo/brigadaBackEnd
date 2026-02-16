@@ -34,5 +34,13 @@ class User(Base):
     assignments = relationship("Assignment", back_populates="user", cascade="all, delete-orphan")
     survey_responses = relationship("SurveyResponse", back_populates="user", cascade="all, delete-orphan")
     
+    # Activation system relationships
+    supervised_whitelist = relationship("UserWhitelist", foreign_keys="UserWhitelist.assigned_supervisor_id", back_populates="assigned_supervisor")
+    whitelist_activation = relationship("UserWhitelist", foreign_keys="UserWhitelist.activated_user_id", back_populates="activated_user")
+    created_whitelist = relationship("UserWhitelist", foreign_keys="UserWhitelist.created_by", back_populates="creator")
+    used_activation_codes = relationship("ActivationCode", foreign_keys="ActivationCode.used_by_user_id", back_populates="used_by_user")
+    generated_activation_codes = relationship("ActivationCode", foreign_keys="ActivationCode.generated_by", back_populates="generator")
+    activation_audit_logs = relationship("ActivationAuditLog", foreign_keys="ActivationAuditLog.created_user_id", back_populates="created_user")
+    
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, role={self.role})>"
