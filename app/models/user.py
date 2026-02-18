@@ -31,7 +31,7 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relationships
-    assignments = relationship("Assignment", back_populates="user", cascade="all, delete-orphan")
+    assignments = relationship("Assignment", foreign_keys="Assignment.user_id", back_populates="user", cascade="all, delete-orphan")
     survey_responses = relationship("SurveyResponse", back_populates="user", cascade="all, delete-orphan")
     
     # Activation system relationships

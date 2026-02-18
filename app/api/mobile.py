@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.services.survey_service import SurveyService
 from app.services.response_service import ResponseService
 from app.repositories.assignment_repository import AssignmentRepository
+from app.repositories.response_repository import ResponseRepository
 from app.schemas.survey import SurveyVersionResponse, AssignedSurveyResponse
 from app.schemas.response import (
     SurveyResponseCreate, 
@@ -333,29 +334,68 @@ def upload_document(
         secure=True,
     )
 
-    # Determine Cloudinary resource_type and folder from document type
-    doc_type = request.metadata.document_type if request.metadata else "photo"
-    folder_map = {
-        "id_card": "brigada/ine",
-        "photo": "brigada/photos",
-        "signature": "brigada/signatures",
-        "form": "brigada/forms",
-        "receipt": "brigada/receipts",
-    }
-    folder = folder_map.get(doc_type, "brigada/misc")
+    # Determine Cloudinary resource_type
+    doc_type = (request.metadata.document_type if request.metadata else "photo").lower()
+    resource_type = "image" if request.mime_type.startswith("image/") else "raw"
+
+    # ── Smart folder hierarchy ─────────────────────────────────────────────
+    # brigada/surveys/{survey_id}/{year}/{month}/{doc_type}/q{question_id}/{doc_id}
+    #
+    # Enables Cloudinary prefix queries like:
+    #   brigada/surveys/7/**              → all files for survey 7
+    #   brigada/surveys/7/2026/02/**      → monthly slice
+    #   brigada/surveys/7/2026/02/photo/** → photos that month
+    #
+    now_utc = datetime.utcnow()
+    year_str = now_utc.strftime("%Y")
+    month_str = now_utc.strftime("%m")
+
+    # Resolve survey_id from client_id (response may not exist yet if uploading before submit)
+    survey_id = "unknown"
+    question_id = request.metadata.question_id if request.metadata else None
+    try:
+        resp_repo = ResponseRepository(db)
+        existing = resp_repo.get_by_client_id(request.client_id)
+        if existing:
+            from app.models.survey import SurveyVersion as SV
+            sv = db.query(SV).filter(SV.id == existing.version_id).first()
+            if sv:
+                survey_id = str(sv.survey_id)
+    except Exception:
+        pass  # Non-fatal — folder degrades gracefully to "unknown"
+
+    q_segment = f"q{question_id}" if question_id else "q-unknown"
+
+    folder = (
+        f"brigada/surveys/{survey_id}"
+        f"/{year_str}/{month_str}"
+        f"/{doc_type}"
+        f"/{q_segment}"
+    )
     public_id = f"{folder}/{document_id}"
 
-    timestamp = int(datetime.utcnow().timestamp())
+    timestamp = int(now_utc.timestamp())
     upload_params = {
         "public_id": public_id,
         "timestamp": timestamp,
-        "folder": folder,
-        "resource_type": "image" if request.mime_type.startswith("image/") else "raw",
+        "resource_type": resource_type,
         "tags": [
+            f"survey_{survey_id}",
             f"user_{current_user.id}",
             f"type_{doc_type}",
+            f"year_{year_str}",
+            f"month_{year_str}_{month_str}",
+            *([f"question_{question_id}"] if question_id else []),
             "brigada",
         ],
+        # Store rich context as Cloudinary metadata (searchable in dashboard)
+        "context": "|".join([
+            f"survey_id={survey_id}",
+            f"user_id={current_user.id}",
+            f"doc_type={doc_type}",
+            f"client_id={request.client_id}",
+            *([f"question_id={question_id}"] if question_id else []),
+        ]),
     }
 
     # Generate Cloudinary signature
@@ -365,7 +405,7 @@ def upload_document(
 
     upload_url = (
         f"https://api.cloudinary.com/v1_1/{settings.CLOUDINARY_CLOUD_NAME}"
-        f"/{upload_params['resource_type']}/upload"
+        f"/{resource_type}/upload"
     )
 
     return DocumentUploadResponse(

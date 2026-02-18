@@ -1,7 +1,7 @@
 """Assignment repository."""
 from typing import Optional, List
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 
 from app.models.assignment import Assignment, AssignmentStatus
 
@@ -12,14 +12,30 @@ class AssignmentRepository:
     def __init__(self, db: Session):
         self.db = db
     
-    def create(self, user_id: int, survey_id: int, assigned_by: int,
-               location: Optional[str] = None) -> Assignment:
+    def get_response_count(self, user_id: int, survey_id: int) -> int:
+        """Count how many survey responses a user has submitted for a survey."""
+        from app.models.response import SurveyResponse
+        from app.models.survey import SurveyVersion
+        return (
+            self.db.query(func.count(SurveyResponse.id))
+            .join(SurveyVersion, SurveyResponse.version_id == SurveyVersion.id)
+            .filter(
+                SurveyResponse.user_id == user_id,
+                SurveyVersion.survey_id == survey_id,
+            )
+            .scalar() or 0
+        )
+
+    def create(self, user_id: int, survey_id: int, assigned_by: Optional[int],
+               location: Optional[str] = None,
+               notes: Optional[str] = None) -> Assignment:
         """Create a new assignment."""
         assignment = Assignment(
             user_id=user_id,
             survey_id=survey_id,
             assigned_by=assigned_by,
-            location=location
+            location=location,
+            notes=notes,
         )
         self.db.add(assignment)
         self.db.commit()
@@ -35,7 +51,11 @@ class AssignmentRepository:
         """Get all assignments (admin view)."""
         from sqlalchemy.orm import joinedload
         query = self.db.query(Assignment)\
-            .options(joinedload(Assignment.user), joinedload(Assignment.survey))
+            .options(
+                joinedload(Assignment.user),
+                joinedload(Assignment.survey),
+                joinedload(Assignment.assigned_by_user),
+            )
         if status is not None:
             query = query.filter(Assignment.status == status)
         return query.order_by(Assignment.created_at.desc()).offset(skip).limit(limit).all()

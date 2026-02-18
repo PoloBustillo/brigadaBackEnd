@@ -8,7 +8,6 @@ from app.repositories.user_repository import UserRepository
 from app.repositories.survey_repository import SurveyRepository
 from app.repositories.notification_repository import NotificationRepository
 from app.models.assignment import Assignment, AssignmentStatus
-from app.models.user import UserRole
 from app.schemas.assignment import AssignmentCreate, AssignmentUpdate
 
 
@@ -22,18 +21,16 @@ class AssignmentService:
         self.survey_repo = SurveyRepository(db)
         self.notif_repo = NotificationRepository(db)
     
-    def create_assignment(self, assignment_data: AssignmentCreate, 
+    def create_assignment(self, assignment_data: AssignmentCreate,
                          assigned_by: int) -> Assignment:
         """
         Create a new assignment.
-        
+
+        Any active user (brigadista OR encargado) can be assigned a survey.
         Validates:
-        - User exists and is a brigadista
+        - User exists and is active
         - Survey exists and is active
-        - No duplicate assignment
-        
-        Raises:
-            HTTPException: If validation fails
+        - No duplicate assignment (same user + survey)
         """
         # Validate user
         user = self.user_repo.get_by_id(assignment_data.user_id)
@@ -42,13 +39,13 @@ class AssignmentService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             )
-        
-        if user.role != UserRole.BRIGADISTA:
+
+        if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Can only assign surveys to brigadistas"
+                detail="Cannot assign survey to an inactive user"
             )
-        
+
         # Validate survey
         survey = self.survey_repo.get_by_id(assignment_data.survey_id, include_versions=False)
         if not survey:
@@ -56,33 +53,29 @@ class AssignmentService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Survey not found"
             )
-        
+
         if not survey.is_active:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot assign inactive survey"
             )
-        
-        # Check for duplicate
-        if self.assignment_repo.exists(assignment_data.user_id, assignment_data.survey_id):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User already assigned to this survey"
-            )
-        
+
+        # Check for duplicate — REMOVED: same user can be assigned same survey
+        # (they may fill it multiple times; responses are tracked in survey_responses)
+
         assignment = self.assignment_repo.create(
             user_id=assignment_data.user_id,
             survey_id=assignment_data.survey_id,
             assigned_by=assigned_by,
-            location=assignment_data.location
+            location=assignment_data.location,
+            notes=assignment_data.notes,
         )
 
         # Emit notification
-        brigadista_name = f"{user.nombre} {user.apellido}".strip() if (user.nombre or user.apellido) else user.email
         self.notif_repo.create(
             type="assignment_created",
             title="Nueva asignación creada",
-            message=f'{brigadista_name} fue asignado/a a la encuesta "{survey.title}".',
+            message=f'{user.full_name or user.email} fue asignado/a a la encuesta "{survey.title}".',
             action_url="/dashboard/assignments",
         )
 

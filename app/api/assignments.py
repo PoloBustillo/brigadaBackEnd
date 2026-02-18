@@ -25,7 +25,11 @@ def list_assignments(
     """
     from app.repositories.assignment_repository import AssignmentRepository
     repo = AssignmentRepository(db)
-    return repo.get_all(status=status, skip=skip, limit=limit)
+    assignments = repo.get_all(status=status, skip=skip, limit=limit)
+    # Attach response_count to each assignment as a transient attribute
+    for a in assignments:
+        a.response_count = repo.get_response_count(a.user_id, a.survey_id)
+    return assignments
 
 
 @router.post("", response_model=AssignmentResponse, status_code=201)
